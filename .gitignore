@@ -1,0 +1,8 @@
+__pycache__/
+*.py[cod]
+*$py.class
+.nl_state.json
+temp_*.xml
+*.log
+.vscode/
+.idea/
