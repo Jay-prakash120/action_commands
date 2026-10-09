@@ -39,32 +39,21 @@ here() {
 
 # Restart Windows Explorer / taskbar
 restartexplorer() {
-  echo -e "\033[1;36m🔄  Stopping Windows Explorer...\033[0m"
+  echo -e "\033[1;36m🔄  Restarting Windows Explorer / Taskbar...\033[0m"
   taskkill //F //IM explorer.exe >/dev/null 2>&1
-  sleep 0.25
-  echo -e "\033[1;33m⚡  Restarting Windows Explorer / Taskbar...\033[0m"
   start explorer.exe
-  sleep 0.2
   echo -e "\033[1;32m✔   Windows Explorer restarted successfully.\033[0m"
 }
 
 # Show Local and Public IP
 myip() {
-  echo -e "\033[1;36m╭── 🌐 Network Information ─────────────────────────╮\033[0m"
-  local local_ip=$(ipconfig.exe | grep -i "IPv4" | awk -F: '{print $2}' | tr -d '\r ' | head -n 1)
-  echo -e "\033[1;36m│\033[0m   \033[1;32mLocal IPv4\033[0m  : \033[1;37m${local_ip}\033[0m"
-  sleep 0.15
-  local public_ip=$(curl -s --max-time 3 https://api.ipify.org 2>/dev/null || echo "Unavailable")
-  echo -e "\033[1;36m│\033[0m   \033[1;35mPublic IP\033[0m   : \033[1;37m${public_ip}\033[0m"
-  echo -e "\033[1;36m╰───────────────────────────────────────────────────╯\033[0m"
+  python -u "$ACTION_SCRIPTS_DIR/myip_tool.py" "$@"
 }
 
 # Flush DNS Cache
 flushdns() {
   echo -e "\033[1;36m🌊  Flushing Windows DNS Resolver Cache...\033[0m"
-  sleep 0.2
   ipconfig.exe /flushdns >/dev/null 2>&1
-  sleep 0.15
   echo -e "\033[1;32m✔   DNS cache flushed successfully.\033[0m"
 }
 
@@ -143,3 +132,11 @@ _bright_complete() {
   COMPREPLY=( $(compgen -W "${opts}" -- "${cur}") )
 }
 complete -F _bright_complete bright brightness
+ 
+_myip_complete() {
+  local cur="${COMP_WORDS[COMP_CWORD]}"
+  local opts="-r --refresh -f"
+  COMPREPLY=( $(compgen -W "${opts}" -- "${cur}") )
+}
+complete -F _myip_complete myip
+

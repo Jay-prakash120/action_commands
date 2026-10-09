@@ -2,8 +2,6 @@
 import os
 import sys
 import re
-import getpass
-import tempfile
 import subprocess
 
 # Ensure UTF-8 output encoding
@@ -14,7 +12,18 @@ if sys.stdout.encoding != 'utf-8':
     except Exception:
         pass
 
-os.system('')
+def enable_vt_mode():
+    try:
+        import ctypes
+        kernel32 = ctypes.windll.kernel32
+        hStdOut = kernel32.GetStdHandle(-11)
+        mode = ctypes.c_ulong()
+        if kernel32.GetConsoleMode(hStdOut, ctypes.byref(mode)):
+            kernel32.SetConsoleMode(hStdOut, mode.value | 0x0004)
+    except Exception:
+        pass
+
+enable_vt_mode()
 
 # ANSI Colors
 RESET = "\033[0m"
@@ -36,7 +45,7 @@ B_WHITE = "\033[1;37m"
 
 def get_current_connected_ssid():
     try:
-        out = subprocess.check_output('netsh wlan show interfaces', shell=True, text=True, errors='ignore')
+        out = subprocess.check_output(['netsh', 'wlan', 'show', 'interfaces'], text=True, errors='ignore')
         for line in out.splitlines():
             if 'SSID' in line and 'BSSID' not in line:
                 parts = line.split(':', 1)
@@ -59,7 +68,7 @@ def get_adapter_admin_state():
 def get_saved_profiles():
     profiles = set()
     try:
-        out = subprocess.check_output('netsh wlan show profiles', shell=True, text=True, errors='ignore')
+        out = subprocess.check_output(['netsh', 'wlan', 'show', 'profiles'], text=True, errors='ignore')
         for line in out.splitlines():
             if ':' in line and 'All User Profile' in line:
                 parts = line.split(':', 1)
@@ -71,7 +80,7 @@ def get_saved_profiles():
 
 def scan_networks():
     try:
-        out = subprocess.check_output('netsh wlan show networks mode=bssid', shell=True, text=True, errors='ignore')
+        out = subprocess.check_output(['netsh', 'wlan', 'show', 'networks', 'mode=bssid'], text=True, errors='ignore')
     except Exception:
         return []
 
@@ -172,6 +181,7 @@ def create_wifi_profile(ssid, password=None):
     </MSM>
 </WLANProfile>"""
 
+    import tempfile
     with tempfile.NamedTemporaryFile('w', delete=False, suffix='.xml') as f:
         f.write(xml)
         temp_name = f.name
@@ -194,6 +204,7 @@ def connect_to_network(ssid, auth='WPA2'):
         if auth != 'Open':
             print(f"\n{B_YELLOW}🔐  Network '{ssid}' requires a password.{RESET}")
             try:
+                import getpass
                 pwd = getpass.getpass("Enter password: ")
             except KeyboardInterrupt:
                 print("\n[-] Connection aborted.")
@@ -212,10 +223,16 @@ def connect_to_network(ssid, auth='WPA2'):
     else:
         print(f"{B_RED}✖  Connection failed:{RESET} {res.stderr.strip() or res.stdout.strip()}\n")
 
+def get_networks_and_connected():
+    from concurrent.futures import ThreadPoolExecutor
+    with ThreadPoolExecutor(max_workers=2) as ex:
+        f_conn = ex.submit(get_current_connected_ssid)
+        f_nets = ex.submit(scan_networks)
+        return f_conn.result(), f_nets.result()
+
 def show_interactive_menu():
     while True:
-        connected = get_current_connected_ssid()
-        networks = scan_networks()
+        connected, networks = get_networks_and_connected()
 
         if not networks:
             print(f"\n{YELLOW}⚠️  No Wi-Fi networks found in range.{RESET}")
@@ -263,8 +280,7 @@ def main():
     cmd = sys.argv[1].lower()
 
     if cmd == "list":
-        connected = get_current_connected_ssid()
-        networks = scan_networks()
+        connected, networks = get_networks_and_connected()
         print(f"\n{B_CYAN}╭── 📡 Visible Wi-Fi Networks ────────────────────────────────────────────╮{RESET}")
         for idx, net in enumerate(networks, 1):
             ssid = net['ssid']

@@ -1,0 +1,3 @@
+@echo off
+echo Flushing Windows DNS Resolver Cache...
+ipconfig /flushdns

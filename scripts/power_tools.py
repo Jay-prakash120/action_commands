@@ -14,8 +14,18 @@ if sys.stdout.encoding != 'utf-8':
     except Exception:
         pass
 
-# Enable ANSI escape sequence processing in Windows terminals
-os.system('')
+def enable_vt_mode():
+    try:
+        import ctypes
+        kernel32 = ctypes.windll.kernel32
+        hStdOut = kernel32.GetStdHandle(-11)
+        mode = ctypes.c_ulong()
+        if kernel32.GetConsoleMode(hStdOut, ctypes.byref(mode)):
+            kernel32.SetConsoleMode(hStdOut, mode.value | 0x0004)
+    except Exception:
+        pass
+
+enable_vt_mode()
 
 # ANSI Colors & Styling
 RESET = "\033[0m"
@@ -146,8 +156,6 @@ def handle_killport(args, pace=True):
         return
 
     print(f"{CYAN}🔍  Scanning network connections for port {B_WHITE}{target_port}{CYAN}...{RESET}", flush=True)
-    if pace:
-        time.sleep(0.25)
 
     killed_pids = set()
 
@@ -166,8 +174,6 @@ def handle_killport(args, pace=True):
                 p.kill()
                 killed_pids.add(conn.pid)
                 print(f"{B_GREEN}🎯  Killed {B_WHITE}{p_name}{B_GREEN} {DIM}(PID: {conn.pid}){B_GREEN} holding port {B_WHITE}{target_port}{B_GREEN}.{RESET}", flush=True)
-                if pace:
-                    time.sleep(0.1)
             except (psutil.NoSuchProcess, psutil.AccessDenied) as err:
                 print(f"{B_RED}✖  Could not terminate PID {conn.pid}:{RESET} {err}", flush=True)
 
@@ -187,15 +193,10 @@ def handle_killport(args, pace=True):
                             p.kill()
                             killed_pids.add(pid)
                             print(f"{B_GREEN}🎯  Killed {B_WHITE}{p_name}{B_GREEN} {DIM}(PID: {pid}){B_GREEN} holding port {B_WHITE}{target_port}{B_GREEN}.{RESET}", flush=True)
-                            if pace:
-                                time.sleep(0.1)
                         except Exception as e:
                             print(f"{B_RED}✖  Could not terminate PID {pid}:{RESET} {e}", flush=True)
         except subprocess.CalledProcessError:
             pass
-
-    if pace:
-        time.sleep(0.15)
 
     if not killed_pids:
         print(f"{YELLOW}ℹ   Port {B_WHITE}{target_port}{YELLOW} is not currently in use by any process.{RESET}\n", flush=True)

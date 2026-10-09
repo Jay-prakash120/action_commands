@@ -57,3 +57,11 @@ Register-ArgumentCompleter -Native -CommandName 'hotspot' -ScriptBlock {
         }
     }
 }
+
+# Autocompletion for myip
+Register-ArgumentCompleter -Native -CommandName 'myip' -ScriptBlock {
+    param($wordToComplete, $commandAst, $cursorPosition)
+    @('-r', '--refresh', '-f') | Where-Object { $_ -like "$wordToComplete*" } | ForEach-Object {
+        [System.Management.Automation.CompletionResult]::new($_, $_, 'ParameterValue', $_)
+    }
+}

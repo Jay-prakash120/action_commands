@@ -2,7 +2,6 @@
 import os
 import sys
 import msvcrt
-import win32com.client
 
 # Ensure UTF-8 output encoding
 if sys.stdout.encoding != 'utf-8':
@@ -12,7 +11,18 @@ if sys.stdout.encoding != 'utf-8':
     except Exception:
         pass
 
-os.system('')
+def enable_vt_mode():
+    try:
+        import ctypes
+        kernel32 = ctypes.windll.kernel32
+        hStdOut = kernel32.GetStdHandle(-11)
+        mode = ctypes.c_ulong()
+        if kernel32.GetConsoleMode(hStdOut, ctypes.byref(mode)):
+            kernel32.SetConsoleMode(hStdOut, mode.value | 0x0004)
+    except Exception:
+        pass
+
+enable_vt_mode()
 
 RESET = "\033[0m"
 BOLD = "\033[1m"
@@ -30,9 +40,18 @@ B_YELLOW = "\033[1;33m"
 B_WHITE = "\033[1;37m"
 B_RED = "\033[1;31m"
 
+_wmi_services = None
+
+def get_wmi_services():
+    global _wmi_services
+    if _wmi_services is None:
+        import win32com.client
+        _wmi_services = win32com.client.GetObject('winmgmts:\\\\.\\root\\wmi')
+    return _wmi_services
+
 def get_brightness():
     try:
-        wmi = win32com.client.GetObject('winmgmts:\\\\.\\root\\wmi')
+        wmi = get_wmi_services()
         for m in wmi.InstancesOf('WmiMonitorBrightness'):
             return int(m.CurrentBrightness)
     except Exception:
@@ -42,7 +61,7 @@ def get_brightness():
 def set_brightness(val):
     val = max(0, min(100, val))
     try:
-        wmi = win32com.client.GetObject('winmgmts:\\\\.\\root\\wmi')
+        wmi = get_wmi_services()
         for m in wmi.InstancesOf('WmiMonitorBrightnessMethods'):
             in_param = m.Methods_('WmiSetBrightness').inParameters.SpawnInstance_()
             in_param.Properties_('Timeout').Value = 0

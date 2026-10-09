@@ -2,6 +2,8 @@ __pycache__/
 *.py[cod]
 *$py.class
 .nl_state.json
+.*cache*.json
+*.cache
 temp_*.xml
 *.log
 .vscode/

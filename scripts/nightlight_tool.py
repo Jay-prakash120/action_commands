@@ -13,7 +13,17 @@ if sys.stdout.encoding != 'utf-8':
     except Exception:
         pass
 
-os.system('')
+def enable_vt_mode():
+    try:
+        kernel32 = ctypes.windll.kernel32
+        hStdOut = kernel32.GetStdHandle(-11)
+        mode = ctypes.c_ulong()
+        if kernel32.GetConsoleMode(hStdOut, ctypes.byref(mode)):
+            kernel32.SetConsoleMode(hStdOut, mode.value | 0x0004)
+    except Exception:
+        pass
+
+enable_vt_mode()
 
 RESET = "\033[0m"
 DIM = "\033[2m"
